@@ -6,7 +6,7 @@ import org.junit.Test;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.test.context.ContextConfiguration;
 
-@ContextConfiguration(classes = {ImportRdfFromFileJob.class})
+@ContextConfiguration(classes = {ImportRdfFromFileJob.class} )
 public class ImportRdfFromFileJobTest extends AbstractJobRunnerTest {
 
     @Test

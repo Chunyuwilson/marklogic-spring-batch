@@ -12,21 +12,18 @@ import com.marklogic.client.query.QueryManager;
 import com.marklogic.client.query.StructuredQueryBuilder;
 import com.marklogic.client.query.StructuredQueryDefinition;
 import com.marklogic.spring.batch.bind.StepExecutionAdapter;
-import com.marklogic.spring.batch.config.BatchProperties;
 import com.marklogic.spring.batch.core.AdaptedStepExecution;
+import com.marklogic.spring.batch.core.repository.support.MarkLogicJobRepositoryProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.repository.dao.StepExecutionDao;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.util.Assert;
-import org.springframework.util.ReflectionUtils;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -37,25 +34,13 @@ public class MarkLogicStepExecutionDao implements StepExecutionDao {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
 
     private DatabaseClient databaseClient;
-    private BatchProperties properties;
+    private MarkLogicJobRepositoryProperties properties;
     private StepExecutionAdapter adapter;
 
-    public MarkLogicStepExecutionDao(DatabaseClient databaseClient, BatchProperties batchProperties) {
+    public MarkLogicStepExecutionDao(DatabaseClient databaseClient, MarkLogicJobRepositoryProperties batchProperties) {
         this.databaseClient = databaseClient;
         this.properties = batchProperties;
         adapter = new StepExecutionAdapter();
-    }
-
-    private static void copy(final StepExecution sourceExecution, final StepExecution targetExecution) {
-        // Cheaper than full serialization is a reflective field copy, which is
-        // fine for volatile storage
-        ReflectionUtils.doWithFields(StepExecution.class, new ReflectionUtils.FieldCallback() {
-            @Override
-            public void doWith(Field field) throws IllegalArgumentException, IllegalAccessException {
-                field.setAccessible(true);
-                field.set(targetExecution, field.get(sourceExecution));
-            }
-        }, ReflectionUtils.COPYABLE_FIELDS);
     }
 
     @Override
@@ -187,18 +172,16 @@ public class MarkLogicStepExecutionDao implements StepExecutionDao {
         SearchHandle results = queryMgr.search(querydef, new SearchHandle());
         if (results.getTotalResults() > 0L) {
             MatchDocumentSummary[] summaries = results.getMatchResults();
-            for (MatchDocumentSummary summary : summaries) {
-                JAXBHandle<AdaptedStepExecution> handle = new JAXBHandle<AdaptedStepExecution>(jaxbContext());
-                AdaptedStepExecution ase = summaries[0].getFirstSnippet(handle).get();
-                StepExecution stepExecution = null;
-                try {
-                    stepExecution = adapter.unmarshal(ase);
-                } catch (Exception ex) {
-                    logger.error(ex.getMessage());
-                    throw new RuntimeException(ex);
-                }
-                stepExecutionList.add(stepExecution);
+            JAXBHandle<AdaptedStepExecution> handle = new JAXBHandle<AdaptedStepExecution>(jaxbContext());
+            AdaptedStepExecution ase = summaries[0].getFirstSnippet(handle).get();
+            StepExecution stepExecution = null;
+            try {
+                stepExecution = adapter.unmarshal(ase);
+            } catch (Exception ex) {
+                logger.error(ex.getMessage());
+                throw new RuntimeException(ex);
             }
+            stepExecutionList.add(stepExecution);
         }
         jobExecution.addStepExecutions(stepExecutionList);
     }

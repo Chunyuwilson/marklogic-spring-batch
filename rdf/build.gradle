@@ -1,26 +1,54 @@
+//apply plugin: "com.jfrog.bintray"
+
 dependencies {
-    compile project(':core')
-
-    // For importing RDF
-    compile('org.apache.jena:jena-arq:2.13.0') {
-        exclude(group: 'org.slf4j')
-        exclude(group: 'ch.qos.logback')
-        exclude(group: 'log4j')
-    }
-    compile('org.apache.jena:jena-core:2.13.0') {
-        exclude(group: 'org.slf4j')
-        exclude(group: 'xerces')
-        exclude(group: 'commons-cli')
-    }
-    compile('com.hp.hpl.jena:jena:2.6.4') {
-        exclude(group: 'org.slf4j')
-    }
-    compile('com.marklogic:marklogic-jena:1.0.0'){
-        changing=true
-        exclude(group: 'org.slf4j')
-        exclude(group: 'log4j')
-        exclude(group: 'ch.qos.logback')
-    }
-
+    compile "org.springframework.batch:spring-batch-core:${springBatchVersion}"
+    compile('com.marklogic:marklogic-jena:3.0.5')
     testCompile project(':test')
 }
+
+ext {
+    artifact = "spring-batch-rdf"
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+    baseName = artifact
+    version = project.version
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+jar {
+    baseName = artifact
+    version = project.version
+}
+
+publishing {
+    publications {
+        mainJavaWithSources(MavenPublication) {
+            groupId group
+            artifactId artifact
+            version project.version
+            from components.java
+            artifact sourcesJar
+        }
+    }
+}
+/*
+bintray {
+    user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
+    key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_KEY')
+    publications = [bintrayPublicationName]
+    pkg {
+        repo = bintrayRepo
+        name = artifact
+        userOrg = bintrayUserOrg
+        licenses = [bintrayLicense]
+        vcsUrl = bintrayVcsUrl
+        version {
+            name = project.version
+            released = new Date()
+            vcsTag = project.version
+        }
+    }
+}
+*/
